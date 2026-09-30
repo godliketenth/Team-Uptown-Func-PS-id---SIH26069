@@ -1,4 +1,5 @@
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -68,7 +69,17 @@ export function NativeSelect({
   );
 }
 
-/** Popover multi-select with a coloured dot per option. */
+/**
+ * Popover multi-select with a coloured dot per option.
+ *
+ * The panel is rendered into `document.body` through a portal and positioned
+ * `fixed` against the trigger, rather than `absolute` inside it. That is not
+ * decoration: the filter row is `overflow-x-auto` so the controls can scroll on
+ * a narrow window, and `overflow-x: auto` computes to `auto` on *both* axes —
+ * so an absolutely-positioned panel was clipped at the row's bottom edge and
+ * became invisible and unclickable, while still being present in the DOM.
+ * A portal cannot be clipped by an ancestor.
+ */
 export function MultiSelect({
   label,
   values,
@@ -83,23 +94,58 @@ export function MultiSelect({
   className?: string;
 }) {
   const [open, setOpen] = React.useState(false);
-  const ref = React.useRef<HTMLDivElement>(null);
+  const [rect, setRect] = React.useState<{ top: number; left: number; width: number } | null>(null);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
+  const panelRef = React.useRef<HTMLDivElement>(null);
+
+  const PANEL_W = 236;
+
+  const place = React.useCallback(() => {
+    const el = triggerRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    // Keep the panel on screen when the trigger sits near the right edge.
+    const left = Math.min(r.left, window.innerWidth - PANEL_W - 12);
+    setRect({ top: r.bottom + 6, left: Math.max(12, left), width: r.width });
+  }, []);
+
+  React.useLayoutEffect(() => {
+    if (open) place();
+  }, [open, place]);
 
   React.useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (triggerRef.current?.contains(t) || panelRef.current?.contains(t)) return;
+      setOpen(false);
     };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    // The panel is fixed, so anything that moves the trigger must move it too.
     document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
+    document.addEventListener("keydown", onKey);
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [open, place]);
 
   const toggle = (v: string) =>
     onChange(values.includes(v) ? values.filter((x) => x !== v) : [...values, v]);
 
   return (
-    <div ref={ref} className={cn("relative", className)}>
-      <button type="button" className={cn(triggerCls, "w-full justify-between")} onClick={() => setOpen((o) => !o)}>
+    <div className={cn("relative", className)}>
+      <button
+        ref={triggerRef}
+        type="button"
+        className={cn(triggerCls, "w-full justify-between")}
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+      >
         <span className="truncate">
           {label}
           {values.length > 0 && (
@@ -108,39 +154,47 @@ export function MultiSelect({
         </span>
         <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[var(--text-faint)]" />
       </button>
-      {open && (
-        <div className="rise absolute z-50 mt-1.5 max-h-72 w-56 overflow-y-auto rounded-[var(--r-md)] border border-[var(--hairline)] bg-[color-mix(in_oklab,var(--surface-raised)_94%,transparent)] p-1.5 shadow-[var(--shadow-lg)] backdrop-blur-xl scroll-thin">
-          {values.length > 0 && (
-            <button
-              className="mb-1 w-full rounded-[var(--r-xs)] px-2 py-1.5 text-left text-[12.5px] uppercase tracking-wider text-[var(--text-faint)] transition-colors hover:bg-[var(--veil-1)] hover:text-[var(--text-dim)]"
-              onClick={() => onChange([])}
-            >
-              Clear selection
-            </button>
-          )}
-          {options.map((o) => {
-            const active = values.includes(o.value);
-            return (
+
+      {open &&
+        rect &&
+        createPortal(
+          <div
+            ref={panelRef}
+            style={{ top: rect.top, left: rect.left, width: PANEL_W }}
+            className="rise fixed z-[60] max-h-[min(60vh,420px)] overflow-y-auto rounded-[var(--r-md)] border border-[var(--hairline)] bg-[color-mix(in_oklab,var(--surface-raised)_96%,transparent)] p-2 shadow-[var(--shadow-lg)] backdrop-blur-xl scroll-thin"
+          >
+            {values.length > 0 && (
               <button
-                key={o.value}
-                className="flex w-full items-center gap-2 rounded-[var(--r-xs)] px-2 py-1.5 text-left text-[14px] text-[var(--text-dim)] transition-colors hover:bg-[var(--veil-1)] hover:text-[var(--text-ink)]"
-                onClick={() => toggle(o.value)}
+                className="mb-1 w-full rounded-[var(--r-xs)] px-2.5 py-2 text-left text-[13px] text-[var(--text-faint)] transition-colors hover:bg-[var(--veil-1)] hover:text-[var(--text-dim)]"
+                onClick={() => onChange([])}
               >
-                <span className="flex h-3 w-3 shrink-0 items-center justify-center">
-                  {active && <Check className="h-3 w-3 text-[var(--color-accent)]" />}
-                </span>
-                {o.color && (
-                  <span
-                    className="h-2 w-2 shrink-0 rounded-full"
-                    style={{ backgroundColor: o.color, boxShadow: `0 0 6px ${o.color}` }}
-                  />
-                )}
-                <span className="truncate">{o.label}</span>
+                Clear selection
               </button>
-            );
-          })}
-        </div>
-      )}
+            )}
+            {options.map((o) => {
+              const active = values.includes(o.value);
+              return (
+                <button
+                  key={o.value}
+                  className="flex w-full items-center gap-2.5 rounded-[var(--r-xs)] px-2.5 py-2 text-left text-[14px] text-[var(--text-dim)] transition-colors hover:bg-[var(--veil-1)] hover:text-[var(--text-ink)]"
+                  onClick={() => toggle(o.value)}
+                >
+                  <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+                    {active && <Check className="h-3.5 w-3.5 text-[var(--color-accent)]" />}
+                  </span>
+                  {o.color && (
+                    <span
+                      className="h-2.5 w-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: o.color }}
+                    />
+                  )}
+                  <span className="truncate">{o.label}</span>
+                </button>
+              );
+            })}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
