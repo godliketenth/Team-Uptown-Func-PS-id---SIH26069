@@ -44,10 +44,24 @@ export function FilterBar() {
     setStatuses,
     setState,
     setDistrict,
+    selectDistrict,
     reset,
   } = useFilters();
 
-  const districts = state ? (DISTRICTS_BY_STATE[state] ?? []) : [];
+  // With a state chosen, the district list narrows to that state. Without one
+  // it used to be *empty* — the control opened onto nothing, which reads as a
+  // broken dropdown rather than a dependency. It now offers every district in
+  // the country, grouped by state, and picking one settles the state too.
+  const districtOptions = state
+    ? (DISTRICTS_BY_STATE[state] ?? []).map((d) => ({ value: d, label: d }))
+    : Object.keys(DISTRICTS_BY_STATE)
+        .sort()
+        .flatMap((st) =>
+          (DISTRICTS_BY_STATE[st] ?? []).map((d) => ({ value: d, label: d, group: st })),
+        );
+
+  const stateOfDistrict = (d: string) =>
+    Object.keys(DISTRICTS_BY_STATE).find((st) => DISTRICTS_BY_STATE[st]?.includes(d)) ?? "";
   const dirty =
     range !== "24h" || eventTypes.length > 0 || statuses.length > 0 || state !== "" || district !== "";
 
@@ -91,11 +105,11 @@ export function FilterBar() {
           .map((s) => ({ value: s, label: s }))}
       />
       <NativeSelect
-        className="w-[156px] shrink-0"
+        className="w-[172px] shrink-0"
         value={district}
-        onChange={setDistrict}
-        placeholder={state ? "All districts" : "All districts"}
-        options={districts.map((d) => ({ value: d, label: d }))}
+        onChange={(d) => (state ? setDistrict(d) : selectDistrict(d, stateOfDistrict(d)))}
+        placeholder="All districts"
+        options={districtOptions}
       />
       {dirty && (
         <Button variant="ghost" size="sm" onClick={reset} title="Clear all filters" className="shrink-0">

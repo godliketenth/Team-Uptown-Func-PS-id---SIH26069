@@ -5,6 +5,16 @@ import { cn } from "@/lib/utils";
 const triggerCls =
   "flex h-9 cursor-pointer items-center gap-1.5 rounded-[var(--r-sm)] border border-[var(--hairline)] bg-[var(--veil-1)] px-2.5 text-[14px] text-[var(--text-dim)] transition-colors hover:text-[var(--text-ink)] hover:brightness-125 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)]/40";
 
+export interface SelectOption {
+  value: string;
+  label: string;
+  /** Optional heading to file this option under. When any option carries one,
+      the list renders as `<optgroup>`s — which is how the district filter can
+      offer every district in the country without becoming an unreadable
+      alphabetical wall. */
+  group?: string;
+}
+
 export function NativeSelect({
   value,
   onChange,
@@ -14,10 +24,21 @@ export function NativeSelect({
 }: {
   value: string;
   onChange: (v: string) => void;
-  options: { value: string; label: string }[];
+  options: SelectOption[];
   placeholder?: string;
   className?: string;
 }) {
+  const grouped = options.some((o) => o.group);
+  const groups: [string, SelectOption[]][] = [];
+  if (grouped) {
+    for (const o of options) {
+      const key = o.group ?? "";
+      const last = groups[groups.length - 1];
+      if (last && last[0] === key) last[1].push(o);
+      else groups.push([key, [o]]);
+    }
+  }
+
   return (
     <div className={cn("relative", className)}>
       <select
@@ -26,11 +47,21 @@ export function NativeSelect({
         className={cn(triggerCls, "w-full appearance-none pr-7")}
       >
         {placeholder && <option value="">{placeholder}</option>}
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
+        {grouped
+          ? groups.map(([g, opts]) => (
+              <optgroup key={g} label={g}>
+                {opts.map((o) => (
+                  <option key={`${g}-${o.value}`} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </optgroup>
+            ))
+          : options.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
       </select>
       <ChevronDown className="pointer-events-none absolute right-2 top-2 h-3.5 w-3.5 text-[var(--text-faint)]" />
     </div>

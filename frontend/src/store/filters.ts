@@ -14,6 +14,7 @@ interface FilterState {
   setStatuses: (v: EventStatus[]) => void;
   setState: (v: string) => void;
   setDistrict: (v: string) => void;
+  selectDistrict: (district: string, state: string) => void;
   reset: () => void;
 }
 
@@ -37,6 +38,10 @@ export const useFilters = create<FilterState>((set) => ({
   // Changing state invalidates whatever district was chosen under the old one.
   setState: (state) => set({ state, district: "" }),
   setDistrict: (district) => set({ district }),
+  // Picking a district from the ungrouped, country-wide list also settles the
+  // state it belongs to, so the two controls never disagree. Set together,
+  // because `setState` deliberately clears the district.
+  selectDistrict: (district, state) => set({ district, state }),
   reset: () => set({ range: "24h", eventTypes: [], statuses: [], state: "", district: "" }),
 }));
 
