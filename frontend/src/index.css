@@ -1,0 +1,526 @@
+@import "tailwindcss";
+@import "maplibre-gl/dist/maplibre-gl.css";
+
+/* Times Sans Serif — Roy Schulenburg, 2006. A sans-serif reading of Times, and
+   the console's voice. It ships as a single 400 weight, which is the one thing
+   to design around: asking the browser for 600 gets a synthesised bold that
+   smears at small sizes. So it carries the display role and the body text at
+   sizes where 400 is enough, and every place that used to lean on weight for
+   hierarchy now leans on size, colour and space instead.
+
+   Figures stay in IBM Plex Mono. This console is mostly numbers in columns, and
+   Times Sans Serif has no tabular figures — proportional digits make a column
+   of counts jitter, which is worse than any typeface choice. */
+@font-face {
+  font-family: "Times Sans Serif";
+  src: url("/fonts/times-sans-serif.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ---------------------------------------------------------------------------
+   "Monsoon" — a warm operational console.
+
+   The ground is warm charcoal in dark mode and warm sand in light mode; there
+   is deliberately no blue in any surface, border or shadow, because a blue-grey
+   ground plus a cyan accent is the default look of every analytics dashboard
+   and reads as generic. Warmth is what makes this one recognisable.
+
+   Blue survives only as *data*: rain and flood are water and are allowed to be
+   blue on a pin or a chart. The distinction is the whole point — chrome is
+   warm, data is chromatic.
+
+   Both modes are first-class. Every value below has a light counterpart of the
+   same role, and every hue in the two data scales is chosen at a mid lightness
+   so that it reads on warm charcoal and on warm paper without being restated.
+
+   Event-type hues and verification-status hues remain two separate scales:
+   they encode independent dimensions and must never be mistaken for one
+   another.
+--------------------------------------------------------------------------- */
+@theme {
+  /* IBM Plex, one superfamily in three widths.
+     Chosen for the subject, not for neutrality: Plex was drawn for technical
+     and public-infrastructure interfaces, its mono is genuinely good at
+     tabular figures, and the family covers Devanagari — this platform ingests
+     Hindi, Gujarati, Bengali and Tamil, so a Latin-only face would be the
+     wrong bet the first time a report is shown in its own script. */
+  --font-sans: "Times Sans Serif", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-display: "Times Sans Serif", "IBM Plex Sans", sans-serif;
+
+  /* Event types — one hue each, used identically on pins, badges and charts.
+     Mid-lightness on purpose: the same hex has to carry on both grounds. */
+  --color-ev-rain: #4a90d9;
+  --color-ev-flood: #1f8a8a;
+  --color-ev-thunderstorm: #8e5fc4;
+  --color-ev-heatwave: #dd7038;
+  --color-ev-fog: #9a8d7c;
+  --color-ev-dust-storm: #b07c3c;
+  --color-ev-strong-wind: #6fa8b5;
+
+  /* Verification status — deliberately a separate scale. Warm stone for the
+     "nothing decided yet" states, conventional signal hues for the decisions. */
+  --color-st-unassessed: #9e9285;
+  --color-st-review: #e8a83a;
+  --color-st-verified: #45b87c;
+  --color-st-rejected: #d14a47;
+  --color-st-resolved: #7a6f62;
+
+  --color-sev-low: #7a6f62;
+  --color-sev-moderate: #e8a83a;
+  --color-sev-high: #dd7038;
+  --color-sev-severe: #d14a47;
+
+  /* Indigo on warm brown — the dye-on-kraft pairing that gives the console its
+     identity, and the one hue absent from both data scales, so a focus ring can
+     never be mistaken for a status. Terracotta is the secondary. */
+  --color-accent: #bee83b;
+  --color-accent-2: #a396e8;
+
+  /* Do not name a surface token `base`, `sm`, `lg` etc: Tailwind would emit
+     `text-base` as a colour utility and shadow the font size of the name. */
+  --color-bg: #14121c;
+}
+
+:root {
+  color-scheme: dark;
+
+  /* "Dusk" — monsoon sky at nightfall.
+     A violet-slate ground with a luminous lime accent. The violet is carried
+     through every surface, veil and shadow so the console reads as one
+     material rather than grey with a coloured button on it; the lime appears
+     only where something is active or focused, which is why it can be that
+     bright without shouting.
+
+     Lime is also the one hue absent from both data scales, so an accent can
+     never be mistaken for a verification status — the property the previous
+     indigo had, kept deliberately. */
+  --surface-base: #14121c;
+  --surface-panel: #1d1a27;
+  --surface-panel-2: #221e2e;
+  --surface-raised: #272233;
+  --surface-line: #332c42;
+
+  --veil-1: rgba(226, 218, 255, 0.05);
+  --veil-2: rgba(226, 218, 255, 0.025);
+  --hairline: rgba(226, 218, 255, 0.1);
+  --hairline-soft: rgba(226, 218, 255, 0.055);
+
+  --text-ink: #edeaf4;
+  --text-dim: #a9a2bc;
+  --text-faint: #7d7496;
+
+  --pin-base: #14121c;
+  --pin-ink: #f4f1fb;
+
+  /* Text on a filled warning chip. Dark in both modes: every IMD warning
+     colour is light enough that dark ink is the only one that passes. */
+  --warning-ink: #131316;
+
+  /* The accent needs more lightness on a dark ground than on a light one to
+     hold the same apparent weight. */
+  --accent: #bee83b;
+  /* Periwinkle, not the plum it started as: the thunderstorm event hue is
+     #8E5FC4, and a secondary accent that close to a data colour is a
+     collision waiting to happen on a legend. */
+  --accent-2: #a396e8;
+
+  /* Basemap. The map is drawn from these tokens rather than tinted after the
+     fact — see mapStyle.ts. Nothing inverts the canvas any more. Water is the
+     one place a cool hue is allowed on a surface, because water is the subject. */
+  --map-land: #221f2c;
+  --map-land-alt: #2a2637;
+  --map-water: #100f1a;
+  --map-boundary: rgba(226, 218, 255, 0.16);
+  --map-boundary-country: rgba(226, 218, 255, 0.32);
+  --map-road: rgba(226, 218, 255, 0.07);
+  --map-road-major: rgba(226, 218, 255, 0.13);
+  --map-building: rgba(226, 218, 255, 0.055);
+  --map-label: #9b93b0;
+  --map-label-strong: #c9c2dc;
+  --map-label-halo: #14121c;
+
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r-md: 11px;
+  --r-lg: 15px;
+  --r-xl: 20px;
+
+  --shadow-sm: 0 1px 2px rgba(6, 4, 14, 0.55);
+  --shadow-md: 0 4px 16px -4px rgba(6, 4, 14, 0.66), 0 1px 3px rgba(6, 4, 14, 0.4);
+  --shadow-lg: 0 18px 48px -12px rgba(6, 4, 14, 0.8), 0 4px 12px rgba(6, 4, 14, 0.48);
+  --glow-accent: 0 0 0 1px rgba(190, 232, 59, 0.34), 0 0 24px -4px rgba(190, 232, 59, 0.34);
+}
+
+/* Light mode is bulletin paper, not parchment.
+   The first pass made it sand and cream, which read as light brown and is also
+   the single commonest tell of a generated design. It is now a cool newsprint
+   grey: the modes differ in temperature on purpose — a warm room at night, a
+   printed sheet by day — and the identity carries through what does not change
+   between them, the event hues and the indigo accent. */
+.light {
+  color-scheme: light;
+
+  /* Dusk by daylight: the same violet, drained to a lilac-tinted paper.
+     The accent has to swap roles here — lime on near-white measures about
+     1.5:1, nowhere near readable — so light mode runs a deep olive-lime, which
+     is recognisably the same hue family carried to a usable lightness. */
+  --surface-base: #e9e7f0;
+  --surface-panel: #fbfafe;
+  --surface-panel-2: #f2f0f8;
+  --surface-raised: #ffffff;
+  --surface-line: #d7d2e4;
+
+  --veil-1: rgba(58, 42, 96, 0.04);
+  --veil-2: rgba(58, 42, 96, 0.02);
+  --hairline: rgba(23, 20, 31, 0.13);
+  --hairline-soft: rgba(23, 20, 31, 0.075);
+
+  --text-ink: #17141f;
+  --text-dim: #544c68;
+  --text-faint: #5c5473;
+
+  --pin-base: #ffffff;
+  --pin-ink: #17141f;
+  --warning-ink: #17141f;
+
+  /* 56% measured, not guessed. Amber is the limiting hue — the lightest of the
+     two scales — and lands at 4.93:1 here; every other hue clears 5.5:1, and all
+     of them stay identifiable (amber reads as ochre, rain as navy, verified as
+     forest green). At 62% amber fell to 4.2:1, under the minimum. */
+  --hue-strength: 56%;
+  --hue-shade: #0b0c0e;
+
+  --accent: #4f680b;
+  --accent-2: #5b49a8;
+
+  --map-land: #f0eef6;
+  --map-land-alt: #e6e2f0;
+  --map-water: #c9c6dc;
+  --map-boundary: rgba(23, 20, 31, 0.2);
+  --map-boundary-country: rgba(23, 20, 31, 0.36);
+  --map-road: rgba(23, 20, 31, 0.085);
+  --map-road-major: rgba(23, 20, 31, 0.16);
+  --map-building: rgba(23, 20, 31, 0.07);
+  --map-label: #544c68;
+  --map-label-strong: #2c2638;
+  --map-label-halo: #f6f4fa;
+
+  --shadow-sm: 0 1px 2px rgba(34, 24, 54, 0.08);
+  --shadow-md: 0 4px 16px -4px rgba(34, 24, 54, 0.15), 0 1px 3px rgba(34, 24, 54, 0.08);
+  --shadow-lg: 0 18px 48px -12px rgba(34, 24, 54, 0.26), 0 4px 12px rgba(34, 24, 54, 0.11);
+  --glow-accent: 0 0 0 1px rgba(79, 104, 11, 0.34), 0 0 20px -6px rgba(79, 104, 11, 0.4);
+}
+
+/* The accent is the one token that genuinely differs between modes, so the
+   Tailwind-facing `--color-accent` is re-pointed at the per-mode value rather
+   than duplicated at every call site. */
+:root,
+.light {
+  --color-accent: var(--accent);
+  --color-accent-2: var(--accent-2);
+}
+
+@layer base {
+  * {
+    border-color: var(--hairline);
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    /* Three layers: a fine grain, two warm light sources, then the ground.
+       The grain is what keeps large empty surfaces from reading as flat
+       plastic — it shows through the translucent panels, which is the point. */
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E"),
+      radial-gradient(1100px 560px at 12% -12%, rgba(163, 150, 232, 0.1), transparent 62%),
+      radial-gradient(900px 480px at 88% 112%, rgba(190, 232, 59, 0.05), transparent 60%);
+    background-color: var(--surface-base);
+    background-attachment: fixed;
+    background-blend-mode: soft-light, normal, normal;
+    color: var(--text-ink);
+    font-family: var(--font-sans);
+    font-size: 15.5px;
+    font-weight: 600;
+    line-height: 1.5;
+    letter-spacing: 0.004em;
+    text-rendering: optimizeLegibility;
+    /* Times Sans Serif has no bold cut, so every weight above 400 is
+       synthesised. Keep it on — at these sizes it reads as weight, not smear. */
+    font-synthesis: weight;
+    overflow: hidden;
+  }
+
+  .light body {
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='.38'/%3E%3C/svg%3E"),
+      radial-gradient(1100px 560px at 12% -12%, rgba(91, 73, 168, 0.11), transparent 62%),
+      radial-gradient(900px 480px at 88% 112%, rgba(79, 104, 11, 0.07), transparent 60%);
+    background-blend-mode: multiply, normal, normal;
+  }
+
+  /* Numerics, IDs, coordinates and timestamps are always monospaced — this is
+     what makes the console read as an ops tool rather than a consumer app. */
+  .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  /* The wordmark and page titles only. Used sparingly on purpose: a display
+     serif everywhere would be costume, a display serif at the top is voice. */
+  .display {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+
+  .label {
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--text-faint);
+  }
+
+  .label-caps {
+    font-family: var(--font-display);
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--accent) 32%, transparent);
+  }
+}
+
+@layer utilities {
+  /* A panel is a layer of light over the background, not a box drawn on it. */
+  .panel {
+    background-image: linear-gradient(180deg, var(--veil-1), var(--veil-2));
+    background-color: color-mix(in oklab, var(--surface-panel) 84%, transparent);
+    border: 1px solid var(--hairline);
+    box-shadow: var(--shadow-md);
+    backdrop-filter: blur(16px) saturate(125%);
+    -webkit-backdrop-filter: blur(16px) saturate(125%);
+  }
+
+  .panel-flat {
+    background-color: var(--surface-panel);
+    border: 1px solid var(--hairline);
+  }
+
+  .panel-2 {
+    background-color: var(--surface-panel-2);
+  }
+
+  .chrome {
+    background-image: linear-gradient(180deg, var(--veil-1), transparent);
+    background-color: color-mix(in oklab, var(--surface-panel) 90%, transparent);
+    backdrop-filter: blur(18px) saturate(125%);
+    -webkit-backdrop-filter: blur(18px) saturate(125%);
+  }
+
+  .divider-x {
+    border-bottom: 1px solid var(--hairline-soft);
+  }
+  .divider-y {
+    border-right: 1px solid var(--hairline-soft);
+  }
+  .divider-y-l {
+    border-left: 1px solid var(--hairline-soft);
+  }
+
+  .ring-accent {
+    box-shadow: var(--glow-accent);
+  }
+
+  .lift {
+    transition:
+      transform 160ms cubic-bezier(0.2, 0.7, 0.3, 1),
+      box-shadow 160ms ease,
+      background-color 160ms ease;
+  }
+  .lift:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* --- structural devices -------------------------------------------------
+
+     The console used to be built from one kit: identical rounded cards, a pill
+     for every attribute, a soft glow under everything. That kit is why it read
+     as a template, and it also flattened real hierarchy — an event needing a
+     red warning looked like a source that had gone quiet.
+
+     These replace it. An event or alert is a full-bleed row carrying a solid
+     edge in its warning colour, the way a bulletin carries a rule; status is a
+     hard little mark rather than a glowing dot. Nothing here glows.
+  ------------------------------------------------------------------------- */
+
+  /* A row whose left edge states its warning level. Set `border-left-color`
+     inline from WARNING_COLORS — the width is fixed so the scale is comparable
+     down a column. */
+  .edge-row {
+    border-left: 3px solid transparent;
+    line-height: 1.5;
+    transition:
+      background-color 140ms ease,
+      border-left-color 140ms ease;
+  }
+  .edge-row:hover {
+    background-color: var(--veil-1);
+  }
+  .edge-row[data-selected="true"] {
+    background-color: color-mix(in oklab, var(--accent) 11%, transparent);
+  }
+
+  /* A hard status mark. Square, not round, and no shadow: it reads as a
+     printed key rather than an LED. */
+  .mark {
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    flex: none;
+    border-radius: 1px;
+  }
+
+  /* A horizontal rule that means "these are separate things", distinct from a
+     panel border that means "this is one thing". */
+  .rule {
+    border-bottom: 1px solid var(--hairline-soft);
+  }
+
+  .scroll-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface-line) transparent;
+  }
+  .scroll-thin::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  .scroll-thin::-webkit-scrollbar-thumb {
+    background: var(--surface-line);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  .scroll-thin::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklab, var(--text-faint) 55%, transparent);
+    background-clip: content-box;
+  }
+  .scroll-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+/* --- motion ------------------------------------------------------------- */
+@keyframes pin-ripple {
+  0% { transform: scale(0.55); opacity: 0.7; }
+  70% { transform: scale(2.8); opacity: 0; }
+  100% { transform: scale(2.8); opacity: 0; }
+}
+.pin-ripple::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: pin-ripple 1.8s cubic-bezier(0.2, 0.7, 0.3, 1) 2;
+}
+
+/* The "this is new" flash.
+   It was a 2.6s accent wash, which works when events trickle in and fails when
+   they pour in: against a live firehose there was always at least one card
+   mid-flash, so the rail blinked continuously and the signal meant nothing.
+   Shorter and much fainter — it now reads as a card settling into place. */
+@keyframes feed-flash {
+  from { background-color: color-mix(in oklab, var(--accent) 12%, transparent); }
+  to { background-color: transparent; }
+}
+.feed-new { animation: feed-flash 1.1s ease-out 1; }
+
+@keyframes sweep {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(420%); }
+}
+.sweep { animation: sweep 1.9s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.rise { animation: rise 260ms cubic-bezier(0.2, 0.7, 0.3, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* --- map ---------------------------------------------------------------- */
+/* There is deliberately no canvas filter here. The old build inverted the OSM
+   raster to fake a dark map, which muddied the country, left non-Latin labels
+   from neighbouring countries at full contrast, and collapsed to near-black at
+   city zoom. mapStyle.ts now selects a real dark or light basemap and warms it
+   with raster paint properties instead. */
+
+.maplibregl-popup-content {
+  background: var(--surface-panel);
+  color: var(--text-ink);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-md);
+  padding: 10px 12px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  box-shadow: var(--shadow-lg);
+}
+.maplibregl-popup-tip { display: none; }
+
+.maplibregl-ctrl-attrib {
+  background: color-mix(in oklab, var(--surface-panel) 78%, transparent) !important;
+  color: var(--text-dim);
+  backdrop-filter: blur(10px);
+  border-radius: var(--r-sm) 0 0 0 !important;
+  font-size: 10px;
+}
+.maplibregl-ctrl-attrib a { color: var(--text-dim); }
+
+.maplibregl-ctrl-group {
+  background: color-mix(in oklab, var(--surface-panel) 84%, transparent) !important;
+  border: 1px solid var(--hairline) !important;
+  border-radius: var(--r-md) !important;
+  overflow: hidden;
+  box-shadow: var(--shadow-md) !important;
+  backdrop-filter: blur(14px);
+}
+.maplibregl-ctrl-group button {
+  background: transparent !important;
+  border: none !important;
+}
+.maplibregl-ctrl-group button + button {
+  border-top: 1px solid var(--hairline-soft) !important;
+}
+.maplibregl-ctrl-group button:hover {
+  background: var(--veil-1) !important;
+}
+.maplibregl-ctrl-icon {
+  filter: invert(0.78) sepia(0.2);
+}
+.light .maplibregl-ctrl-icon {
+  filter: none;
+}

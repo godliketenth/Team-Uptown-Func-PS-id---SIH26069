@@ -1,0 +1,41 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+sqlalchemy[asyncio]>=2.0
+asyncpg>=0.29
+alembic>=1.13
+pydantic>=2.7
+pydantic-settings>=2.2
+apscheduler>=3.10
+httpx>=0.27
+python-jose[cryptography]>=3.3
+passlib[bcrypt]>=1.7.4
+bcrypt<4.1
+geoalchemy2>=0.14
+python-multipart>=0.0.9
+
+# Semantic deduplication (Phase 1.2). Optional at runtime: if models/ is
+# absent the dedup stage falls back to difflib character similarity.
+onnxruntime>=1.20
+tokenizers>=0.20
+pgvector>=0.3
+numpy>=1.26
+huggingface-hub>=0.25
+
+# Big data stack (Phase 3). All three are OPTIONAL at runtime — the platform
+# runs on Postgres alone, and each of these activates only when its config is
+# set. An unreachable broker or object store degrades to the in-process queue
+# and local disk rather than stopping ingestion.
+aiokafka>=0.12        # KAFKA_BOOTSTRAP_SERVERS
+boto3>=1.34           # S3_ENDPOINT_URL (MinIO or S3)
+
+# Spark is needed only to run the offline batch job in spark/, never by the
+# API. It requires JDK 17 or 21 — not JDK 27, which removed
+# jdk.internal.ref.Cleaner that Spark still depends on (measured: Spark 4.2
+# fails at SparkContext construction on 27).
+# pyspark>=4.0
+
+# Tests (Phase 4.4). Not needed to run the platform.
+# The suite is deliberately infrastructure-free — no database, no broker, no
+# model download — so `pytest -q` works on a fresh clone in a few seconds.
+pytest>=8.0
+pytest-asyncio>=0.23

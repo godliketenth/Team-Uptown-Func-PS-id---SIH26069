@@ -1,0 +1,25 @@
+# Prototype infrastructure: PostgreSQL + PostGIS only.
+#
+# Deliberately not here (see README "Prototype vs full-scale"): Kafka, Spark,
+# Ray, MinIO, Redis, Elasticsearch, Kubernetes. The backend and frontend run
+# locally via uvicorn / npm run dev so the app layer needs no container build.
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: nwap-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: weather
+    ports:
+      - "5432:5432"
+    volumes:
+      - nwap_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d weather"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  nwap_pgdata:

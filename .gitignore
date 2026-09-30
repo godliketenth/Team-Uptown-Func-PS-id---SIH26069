@@ -1,0 +1,29 @@
+# Python
+backend/.venv/
+__pycache__/
+*.py[cod]
+backend/.env
+# Contents excluded, but with `data/` itself still traversable — git cannot
+# re-include a file whose parent directory is excluded, so `backend/data/`
+# silently defeated the negation below.
+backend/data/*
+# ...except the gazetteer: it is a 1.3MB derived artefact of a stable public
+# dataset (GeoNames, CC BY 4.0), and committing it means geocoding works on a
+# fresh clone without a 16MB download. Rebuild with build_gazetteer.py.
+!backend/data/gazetteer.json
+# ONNX embedding model — fetched with `python fetch_model.py`, not committed
+backend/models/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+*.log
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
+
+# Internal working documents — not part of the submission
+docs/
+CLAUDE.md
