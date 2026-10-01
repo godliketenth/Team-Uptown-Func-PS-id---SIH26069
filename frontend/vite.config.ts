@@ -17,6 +17,11 @@ export default defineConfig({
     // a demo-day surprise. strictPort makes the collision fail loudly instead.
     port: 5180,
     strictPort: true,
+    // Bind every interface. Left to itself Vite bound only to IPv6 `[::1]` on
+    // this machine, so `curl localhost` succeeded while Chrome — resolving to
+    // 127.0.0.1 — got "This site can't be reached". A demo that works in the
+    // terminal and not in the browser is the worst possible failure mode.
+    host: true,
     proxy: {
       "/api": { target: "http://127.0.0.1:8000", changeOrigin: true },
     },
